@@ -1,0 +1,133 @@
+# Import necessary libraries
+import speech_recognition as sr
+from tkinter import *
+from tkinter import ttk
+from googletrans import Translator, LANGUAGES
+from gtts import gTTS
+import pygame
+
+# Initialize pygame mixer for playing audio
+pygame.mixer.init()
+
+# Function to translate text and play the translated audio
+def trans():
+    # Initialize Translator
+    translator = Translator()
+    # Translate input text to the selected output language
+    translated = translator.translate(text=Input_text.get(), dest=dest_lang.get())
+    # Clear previous text in the output_text widget
+    output_text.delete(1.0, END)
+    # Insert translated text into the output_text widget
+    output_text.insert(END, translated.text)
+    # Get the translated text and its language
+    convert = translated.text
+    language = translated.src
+    # Generate the audio file using gTTS
+    tts = gTTS(text=convert, lang=language)
+    # Save the audio file
+    tts.save("output.mp3")
+    # Stop any previous audio playback
+    pygame.mixer.music.stop()
+    # Play the translated audio
+    pygame.mixer.init()
+    pygame.mixer.music.load("output.mp3")
+    pygame.mixer.music.play()
+
+# Function to recognize speech and display the recognized and translated text
+def recognize_and_display():
+    # Get the language code for the selected recognition language
+    language_input = language_mapping.get(lang_combo.get())
+    if language_input:
+        # Recognize speech in the selected language
+        recognized_text = recognize_speech(language=language_input)
+        if recognized_text:
+            # Translate recognized text to the selected output language
+            translator = Translator()
+            translated = translator.translate(text=recognized_text, dest=dest_lang.get())
+            # Update labels with recognized and translated text
+            recognized_label.config(text="Recognized Text (in " + language_input + "):")
+            recognized_text_label.config(text=recognized_text)
+            translated_label.config(text="Translated Text (in " + dest_lang.get() + "):")
+            translated_text_label.config(text=translated.text)
+            # Get the translated text and its language
+            convert = translated.text
+            language = translated.src
+            # Generate the audio file using gTTS
+            tts = gTTS(text=convert, lang=language)
+            # Save the audio file
+            tts.save("output.mp3")
+            # Play the translated audio
+            pygame.mixer.init()
+            pygame.mixer.music.load("output.mp3")
+            pygame.mixer.music.play()
+    else:
+        print("Invalid language selection")
+
+# Function to recognize speech using the Google Speech Recognition service
+def recognize_speech(language='en-US'):
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Speak something:")
+        audio = recognizer.listen(source)
+    try:
+        # Use Google Speech Recognition to transcribe the audio
+        response = recognizer.recognize_google(audio, show_all=True, language=language)
+        if 'alternative' in response:
+            # Get the detected language and transcription
+            detected_language = response['alternative'][0].get('lang', 'en-US')
+            print("Detected language:", detected_language)
+            return response['alternative'][0].get('transcript', '')
+        else:
+            print("No transcription alternatives found.")
+            return ""
+    except sr.UnknownValueError:
+        print("Sorry, I couldn't understand what you said.")
+        return ""
+    except sr.RequestError as e:
+        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+        return ""
+
+# Create the main Tkinter window
+root = Tk()
+root.geometry('1100x420')
+root.resizable(0, 0)
+root['bg'] = 'skyblue'
+root.title('Language Translator')
+
+# Create and place GUI elements
+Label(root, text="Language Translator", font="Arial 20 bold").pack()
+
+# Select recognition language
+Label(root, text='Select Recognition Language:', font='arial 13 bold', bg='white smoke').place(x=65, y=90)
+lang_options = list(LANGUAGES.values())
+lang_combo = ttk.Combobox(root, values=lang_options, width=22)
+lang_combo.place(x=65, y=120)
+lang_combo.set('Select language')
+
+# Select output language
+Label(root, text='Select Output Language:', font='arial 13 bold', bg='white smoke').place(x=65, y=150)
+output_options = list(LANGUAGES.values())
+dest_lang = ttk.Combobox(root, values=output_options, width=22)
+dest_lang.place(x=65, y=180)
+dest_lang.set('Select language')
+
+# Button to trigger speech recognition
+trans_btn = Button(root, text='Press to Listen', font='arial 12 bold', pady=5, command=recognize_and_display, bg='orange', activebackground='green')
+trans_btn.place(x=65, y=210)
+
+# Labels for recognized and translated text
+Label(root, text='Output:', font='arial 13 bold', bg='white smoke').place(x=65, y=270)
+recognized_label = Label(root, text="Recognized Text:", font='arial 12 bold', bg='white smoke')
+recognized_label.place(x=65, y=300)
+recognized_text_label = Label(root, text="", font='arial 10', bg='white smoke', wraplength=500, justify=LEFT)
+recognized_text_label.place(x=65, y=330)
+translated_label = Label(root, text="Translated Text:", font='arial 12 bold', bg='white smoke')
+translated_label.place(x=700, y=300)
+translated_text_label = Label(root, text="", font='arial 10', bg='white smoke', wraplength=500, justify=LEFT)
+translated_text_label.place(x=700, y=330)
+
+# Mapping between language names and language codes
+language_mapping = {LANGUAGES[lang]: lang for lang in LANGUAGES}
+
+# Start the main event loop
+root.mainloop()
